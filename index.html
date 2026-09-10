@@ -256,6 +256,15 @@
             text-align: center;
         }
 
+        .notice {
+            background: #f39c12;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -495,6 +504,30 @@
             return date.toISOString().split('T')[0];
         }
 
+        function isWeekend(dateStr) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+            return dayOfWeek === 0 || dayOfWeek === 6;
+        }
+
+        // posune datum na nejbližší pracovní den (víkend -> pondělí)
+        function toWorkday(dateStr) {
+            let result = dateStr;
+            while (isWeekend(result)) {
+                result = addDaysToDate(result, 1);
+            }
+            return result;
+        }
+
+        // datum N-tého pracovního dne cesty; víkendy se přeskakují (N = 0 je první den)
+        function addWorkdaysToDate(dateStr, workdays) {
+            let result = toWorkday(dateStr);
+            for (let i = 0; i < workdays; i++) {
+                result = toWorkday(addDaysToDate(result, 1));
+            }
+            return result;
+        }
+
         function calculateTotalTime(casTam) {
             const tamMin = timeToMinutes(casTam);
             return tamMin * 2 + 30;
@@ -640,13 +673,14 @@
                 return;
             }
 
-            const now = new Date();
-            const selectedDate = new Date(date);
-            const currentMonth = selectedDate.getMonth() + 1;
-            const currentYear = selectedDate.getFullYear();
-            const monthFormatted = currentMonth.toString().padStart(2, '0');
+            const startDate = toWorkday(date);
+            const [currentYear, monthFormatted] = startDate.split('-');
 
             let html = `<div class="success">✅ Nalezeno ${results.length} možností pro ${selectedDriver.jmeno} (${targetKm} km)</div>`;
+
+            if (startDate !== date) {
+                html += `<div class="notice">📆 ${formatDateForCopy(date)} připadá na víkend, cesty proto začínají v pondělí ${formatDateForCopy(startDate)}.</div>`;
+            }
             
             results.forEach((result) => {
                 const routes = result.routes;
@@ -666,7 +700,7 @@ SPZ: ${selectedDriver.spz}
                 let routeData = '';
                 routes.forEach((route, dayIndex) => {
                     const times = calculateTimes(route.casTam);
-                    const dayDate = formatDateForCopy(addDaysToDate(date, dayIndex));
+                    const dayDate = formatDateForCopy(addWorkdaysToDate(date, dayIndex));
                     const copyText = `**${dayDate}**\tChabařovice – ${route.kam}\t\t${times.start}–${times.prijezdTam} / ${times.odjezdZpet}–${times.prijezdZpet}\t${route.km}\t\t${route.popis}, obchodní jednání`;
                     
                     if (routeData) routeData += '\n';
