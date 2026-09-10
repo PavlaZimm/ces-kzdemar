@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interní nástroj ZDEMAR pro vyúčtování pracovních cest – vyhledá vhodnou trasu podle zadaných kilometrů a připraví text k vyúčtování.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#939598">
+    <title>Cesťák ZDEMAR</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%97%3C/text%3E%3C/svg%3E">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #939598, #6c757d);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+            font-weight: 700;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-date {
+            font-size: 1.0rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 16px;
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 2;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        .input-section {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e9ecef;
+            height: fit-content;
+        }
+
+        .input-section h2 {
+            color: #939598;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #939598;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #ffffff;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #f47479;
+            box-shadow: 0 0 0 3px rgba(244, 116, 121, 0.2);
+        }
+
+        .driver-info {
+            background: rgba(244, 116, 121, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            border: 1px solid rgba(244, 116, 121, 0.2);
+            display: none;
+        }
+
+        .driver-info.show {
+            display: block;
+        }
+
+        .driver-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #ec111a, #c8101a);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #d10e17, #b50e15);
+        }
+
+        .results-section {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e9ecef;
+        }
+
+        .results-section h2 {
+            color: #939598;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .route-card {
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .route-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .route-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #939598;
+        }
+
+        .route-km {
+            background: linear-gradient(135deg, #f47479, #ec111a);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .copy-text {
+            background: rgba(248, 249, 250, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px dashed #dee2e6;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            background: linear-gradient(135deg, #f47479, #ec111a);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .copy-btn:hover {
+            background: linear-gradient(135deg, #ec111a, #d10e17);
+        }
+
+        .error, .success, .loading {
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .loading {
+            background: #3498db;
+            color: white;
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .badge {
+            background: #6c757d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+                padding: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Cesťák ZDEMAR</h1>
+            <div class="header-date" id="currentMonth"></div>
+            <p>Profesionální systém pro vyúčtování pracovních cest</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2>📅 Naplánovat cestu</h2>
+                <form id="routeForm">
+                    <div class="form-group">
+                        <label for="driver">Vyberte řidiče:</label>
+                        <select id="driver" name="driver" required>
+                            <option value="">-- Vyberte řidiče --</option>
+                        </select>
+                        <div id="driverInfo" class="driver-info">
+                            <div class="driver-detail">
+                                <span>Firma:</span>
+                                <strong id="driverFirma"></strong>
+                            </div>
+                            <div class="driver-detail">
+                                <span>Vozidlo:</span>
+                                <strong id="driverVozidlo"></strong>
+                            </div>
+                            <div class="driver-detail">
+                                <span>SPZ:</span>
+                                <strong id="driverSpz"></strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date">Datum cesty:</label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="kilometers">Celkové kilometry (tam i zpět):</label>
+                        <input type="number" id="kilometers" name="kilometers" min="1" max="5000" placeholder="např. 334" required>
+                    </div>
+                    
+                    <button type="button" id="searchBtn" class="btn">
+                        🔍 Najít vhodnou trasu
+                    </button>
+                </form>
+            </div>
+
+            <div class="results-section">
+                <h2>📋 Výsledky vyhledávání</h2>
+                <div id="results">
+                    <div class="empty-state">
+                        <div class="icon">🎯</div>
+                        <h3>Připraveno k vyhledávání</h3>
+                        <p>Vyberte řidiče, zadejte datum a kilometry</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer style="text-align: center; padding: 20px; color: #939598; font-size: 14px; border-top: 1px solid #e9ecef; margin-top: 40px;">
+            <p>© 2025 ZDEMAR • Vyrobeno s láskou ❤️ a spoustou ☕</p>
+            <p style="font-size: 12px; margin-top: 5px; opacity: 0.7;">Systém který vám šetří čas</p>
+        </footer>
+    </div>
+
+    <script>
+        const drivers = [
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Bednárová Kateřina", vozidlo: "AUS", spz: "1US 5578" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Bereczová Kateřina", vozidlo: "AUV", spz: "8U7 5370" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Cherepashenko Iryna", vozidlo: "AUS", spz: "1UL 3466" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Černá Eva", vozidlo: "AUS", spz: "1UT 4107" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Čápová Adéla", vozidlo: "AUV", spz: "1UI 8021" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Čmelíková Kateřina", vozidlo: "AUS", spz: "1UA 1098" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Fáborská Lucie", vozidlo: "AUV", spz: "9U8 8841" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Feistnerová Barbora", vozidlo: "AUV", spz: "3P7 2555" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Hajšo Lukáš", vozidlo: "AUV", spz: "5U3 1456" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Heimráthová Tereza", vozidlo: "AUV", spz: "1UE 8249" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Hnyk Ondřej", vozidlo: "AUS", spz: "1UN 9537" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Horkulič Martin", vozidlo: "AUV", spz: "9U2 7056" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Janeček Jan", vozidlo: "AUV", spz: "5SU 4356" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Karmazín Matěj", vozidlo: "AUV", spz: "2SP 0404" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Kohoutková Miloslava", vozidlo: "AUV", spz: "6L7 1605" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Kudělová Kateřina", vozidlo: "AUV", spz: "9AA 9524" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Kučerová Hana", vozidlo: "AUV", spz: "8A4 2381" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Kupka Tomáš", vozidlo: "AUS", spz: "1UN 9527" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Mečíř Ondřej", vozidlo: "AUS", spz: "8U6 3981" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Myroniuková Eva", vozidlo: "AUV", spz: "7U1 5215" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Myslíková Lucie", vozidlo: "AUV", spz: "HBK 2368" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Ostapčuk Nadija", vozidlo: "AUV", spz: "8AC 4399" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Poštová Lenka", vozidlo: "AUV", spz: "6P6 3962" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Ryšková Marcela", vozidlo: "AUS", spz: "1UU 0457" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Sovová Jana", vozidlo: "AUV", spz: "1UT 4648" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Sujová Eliška", vozidlo: "AUV", spz: "1UE 3532" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Tlustošová Tereza", vozidlo: "AUS", spz: "1UA 1378" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Tůma Jonáš", vozidlo: "AUS", spz: "1US 5299" },
+            { firma: "Zdemar Ústí nad Labem s. r. o.", jmeno: "Vajda Ondřej", vozidlo: "AUV", spz: "8P5 1983" },
+            { firma: "Zdemar Czech s. r. o.", jmeno: "Zimmermanová Pavla", vozidlo: "AUV", spz: "1AF 9565" }
+        ];
+
+        const trasy = [
+            { kam: "Brniště", km: 152, casTam: "1:21", popis: "AgroKBtrade s.r.o." },
+            { kam: "Cerhovice", km: 296, casTam: "1:35", popis: "Roman Procházka" },
+            { kam: "Čáslav", km: 334, casTam: "1:55", popis: "Agrone Bohemia s.r.o." },
+            { kam: "Červené Pečky", km: 302, casTam: "1:41", popis: "Jiří Ditrich" },
+            { kam: "Český Dub", km: 200, casTam: "1:44", popis: "EcoJUST s.r.o." },
+            { kam: "Činěves", km: 298, casTam: "1:37", popis: "AUTOCENTRUM BOURA spol.s.r.o." },
+            { kam: "Děčín", km: 56, casTam: "0:33", popis: "Spedservice DC s.r.o., Agrokomodity Děčín s.r.o." },
+            { kam: "Dobříš", km: 304, casTam: "1:48", popis: "Aluhut a.s., ANBREMETALL a.s." },
+            { kam: "Dolní Lukavice", km: 400, casTam: "2:09", popis: "Pavel Langmajer" },
+            { kam: "Dolní Rychnov", km: 262, casTam: "2:03", popis: "Pavel Matejka" },
+            { kam: "Dřísy", km: 178, casTam: "1:10", popis: "Stanislav Ondrák s.r.o." },
+            { kam: "Duchcov", km: 40, casTam: "0:29", popis: "VITRABLOK s.r.o." },
+            { kam: "Františkovy Lázně", km: 316, casTam: "2:18", popis: "Miroslav Veber" },
+            { kam: "Havlíčkův Brod", km: 412, casTam: "2:30", popis: "Logistics Solution a.s." },
+            { kam: "Hostivice", km: 212, casTam: "1:17", popis: "OFFICEO s.r.o." },
+            { kam: "Hradec Králové", km: 378, casTam: "2:00", popis: "INLOGISTIKA s.r.o." },
+            { kam: "Hrochův Týnec", km: 420, casTam: "2:10", popis: "NIKA Logistics a.s." },
+            { kam: "Cheb", km: 310, casTam: "2:22", popis: "K+K dopravní služby s.r.o., LAGARDE SPEDITION spol.s.r.o." },
+            { kam: "Chlumčany", km: 388, casTam: "2:06", popis: "Chlumčanská doprava a suroviny s.r.o." },
+            { kam: "Chodov", km: 242, casTam: "1:57", popis: "Milan Mališ" },
+            { kam: "Chomutov", km: 122, casTam: "1:00", popis: "Ekoselect a.s." },
+            { kam: "Chuchelna", km: 358, casTam: "2:00", popis: "Babka AD s.r.o." },
+            { kam: "Karlovy Vary", km: 224, casTam: "1:48", popis: "AST Coal Trans s.r.o." },
+            { kam: "Kladno", km: 176, casTam: "1:08", popis: "Ing. Jana Kysilková" },
+            { kam: "Kolín", km: 294, casTam: "1:40", popis: "BIOENERGO-KOMPLEX s.r.o." },
+            { kam: "Korozluky", km: 78, casTam: "0:40", popis: "Kočí a Kočová s.r.o." },
+            { kam: "Ledeč nad Sázavou", km: 360, casTam: "2:10", popis: "SD CARGO s.r.o." },
+            { kam: "Stráž pod Ralskem", km: 164, casTam: "1:25", popis: "ENVY RECYCLING s.r.o." },
+            { kam: "Loket", km: 250, casTam: "2:01", popis: "P.V.Profi s.r.o." },
+            { kam: "Louny", km: 118, casTam: "1:00", popis: "SV Store s.r.o." },
+            { kam: "Mělník", km: 146, casTam: "0:50", popis: "J+K Mělník s.r.o." },
+            { kam: "Městec Králové", km: 304, casTam: "1:41", popis: "FERTISTAV CZ a.s." },
+            { kam: "Náchod", km: 454, casTam: "2:30", popis: "Dítě Spedition s.r.o." },
+            { kam: "Netunice", km: 378, casTam: "2:05", popis: "Jaroslav Rataj" },
+            { kam: "Nová Paka", km: 368, casTam: "2:07", popis: "LUKAS TRADING s.r.o." },
+            { kam: "Nová Ves", km: 120, casTam: "0:40", popis: "AMK Trans s.r.o." },
+            { kam: "Nové Strašecí", km: 200, casTam: "1:10", popis: "České lupkové závody a.s." },
+            { kam: "Nový Bydžov", km: 340, casTam: "1:53", popis: "Jakub Sanko" },
+            { kam: "Nýřany", km: 400, casTam: "2:06", popis: "EKO-SEPAR s.r.o." },
+            { kam: "Opařany", km: 394, casTam: "2:37", popis: "KAFKA TRANSPORT a.s." },
+            { kam: "Opatovice nad Labem", km: 364, casTam: "1:51", popis: "CAR-TOUR spol.s.r.o." },
+            { kam: "Osek", km: 336, casTam: "1:55", popis: "Teralix s.r.o." },
+            { kam: "Pardubice", km: 392, casTam: "2:04", popis: "Frapo Trading s.r.o." },
+            { kam: "Pašinka", km: 298, casTam: "1:38", popis: "Dolfi Stone s.r.o." },
+            { kam: "Pelhřimov", km: 412, casTam: "2:23", popis: "NPKS s.r.o." },
+            { kam: "Pesvice", km: 112, casTam: "0:57", popis: "Auta Patrik s.r.o." },
+            { kam: "Plasy", km: 250, casTam: "2:00", popis: "JH Agrocom spol.s.r.o." },
+            { kam: "Plazy", km: 276, casTam: "1:27", popis: "Hofman-výroba a transport betonu+autodoprava" },
+            { kam: "Plzeň", km: 380, casTam: "2:05", popis: "KAMITRANS PLZEŇ s.r.o., AVE sběrné suroviny a.s." },
+            { kam: "Poděbrady", km: 268, casTam: "1:30", popis: "Prostav s.r.o., AVECOR TRADE s.r.o." },
+            { kam: "Praha", km: 200, casTam: "1:14", popis: "AGROFERT a.s., AGRO DNES s.r.o." },
+            { kam: "Přeštice", km: 396, casTam: "2:07", popis: "Stanislav Sajdl" },
+            { kam: "Radonice", km: 186, casTam: "1:26", popis: "Agro Vintířov s.r.o." },
+            { kam: "Roudnice nad Labem", km: 98, casTam: "0:36", popis: "Radek Salamánek" },
+            { kam: "Ruda", km: 208, casTam: "1:11", popis: "DOLEŽAL transport and logistic s.r.o." },
+            { kam: "Rumburk", km: 142, casTam: "1:23", popis: "Václav Munzar" },
+            { kam: "Rybnice", km: 266, casTam: "2:08", popis: "BEST a.s." },
+            { kam: "Říčany", km: 206, casTam: "1:27", popis: "FAST ČR a.s." },
+            { kam: "Smečno", km: 174, casTam: "0:58", popis: "TRUCKTRANS Mazourek s.r.o." },
+            { kam: "Sokolov", km: 276, casTam: "2:04", popis: "HDB Trans s.r.o., KOHÁR spol.s.r.o." },
+            { kam: "Starý Plzenec", km: 368, casTam: "1:57", popis: "Autodoprava Šmejkal s.r.o." },
+            { kam: "Sulejovice", km: 60, casTam: "0:20", popis: "Agrotech Mělník s.r.o." },
+            { kam: "Svojšice", km: 276, casTam: "1:38", popis: "Jaroslav Kubelka" },
+            { kam: "Sýkořice", km: 224, casTam: "1:22", popis: "DestroKladno s.r.o." },
+            { kam: "Teplice", km: 20, casTam: "0:15", popis: "FLUORIT TEPLICE s.r.o." },
+            { kam: "Třemošná", km: 374, casTam: "2:09", popis: "Poprokan Papír s.r.o." },
+            { kam: "Ústí nad Labem", km: 24, casTam: "0:11", popis: "Václav Kovanda" },
+            { kam: "Velemín", km: 54, casTam: "0:21", popis: "Vojtěch Stokláska" },
+            { kam: "Votice", km: 306, casTam: "1:58", popis: "UHLÍ PÍSKY ČERT s.r.o." },
+            { kam: "Vysoké Mýto", km: 440, casTam: "2:17", popis: "Frumenta s.r.o." },
+            { kam: "Zlonice", km: 138, casTam: "0:52", popis: "IK Trade s.r.o." },
+            { kam: "Zruč-Senec", km: 374, casTam: "2:05", popis: "D.O.O.S. TRADE spol. s.r.o." },
+            { kam: "Žlutice", km: 230, casTam: "1:53", popis: "František Adámek" }
+        ];
+
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+
+        function calculateTimes(casTam) {
+            const startTotalMins = 8 * 60;
+            const tamMins = timeToMinutes(casTam);
+            return {
+                start: "08:00",
+                prijezdTam: minutesToTime(startTotalMins + tamMins),
+                odjezdZpet: minutesToTime(startTotalMins + tamMins + 30),
+                prijezdZpet: minutesToTime(startTotalMins + tamMins * 2 + 30)
+            };
+        }
+
+        function formatDateForCopy(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            return `${day}.${month}.${year}`;
+        }
+
+        function addDaysToDate(dateStr, days) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(Date.UTC(year, month - 1, day));
+            date.setUTCDate(date.getUTCDate() + days);
+            return date.toISOString().split('T')[0];
+        }
+
+        function calculateTotalTime(casTam) {
+            const tamMin = timeToMinutes(casTam);
+            return tamMin * 2 + 30;
+        }
+
+        function isValidTime(totalMinutes) {
+            return totalMinutes <= 299;
+        }
+
+        function findSuitableRoutes(targetKm) {
+            const results = [];
+            const tolerance = Math.min(150, Math.max(20, targetKm * 0.05));
+
+            // 1. Jednodenní trasy
+            trasy.forEach(trasa => {
+                const kmDiff = Math.abs(trasa.km - targetKm);
+                if (kmDiff <= tolerance && isValidTime(calculateTotalTime(trasa.casTam))) {
+                    results.push({
+                        type: 'single',
+                        routes: [trasa],
+                        totalKm: trasa.km,
+                        difference: kmDiff
+                    });
+                }
+            });
+            
+            if (results.length > 0) {
+                return results.sort((a, b) => a.difference - b.difference).slice(0, 3);
+            }
+
+            // 2. Dvoudenní kombinace
+            let found = 0;
+            for (let i = 0; i < trasy.length && found < 10; i++) {
+                for (let j = i + 1; j < trasy.length && found < 10; j++) {
+                    const trasa1 = trasy[i];
+                    const trasa2 = trasy[j];
+                    const totalKm = trasa1.km + trasa2.km;
+                    const kmDiff = Math.abs(totalKm - targetKm);
+                    
+                    if (kmDiff <= tolerance && 
+                        isValidTime(calculateTotalTime(trasa1.casTam)) && 
+                        isValidTime(calculateTotalTime(trasa2.casTam))) {
+                        
+                        results.push({
+                            type: 'double',
+                            routes: [trasa1, trasa2],
+                            totalKm: totalKm,
+                            difference: kmDiff
+                        });
+                        found++;
+                    }
+                }
+            }
+            
+            if (results.length > 0) {
+                return results.sort((a, b) => a.difference - b.difference).slice(0, 3);
+            }
+
+            // 3. Greedy algoritmus pro vysoké kilometry
+            const validTrasy = trasy.filter(t => isValidTime(calculateTotalTime(t.casTam)));
+            
+            function greedySearch() {
+                const combination = [];
+                let remainingKm = targetKm;
+                const usedIndices = new Set();
+                
+                for (let iteration = 0; iteration < 25 && remainingKm > 0; iteration++) {
+                    let bestTrasa = null;
+                    let bestIndex = -1;
+                    let bestScore = Infinity;
+                    
+                    validTrasy.forEach((trasa, index) => {
+                        if (usedIndices.has(index)) return;
+                        
+                        const diff = Math.abs(trasa.km - remainingKm);
+                        const penalty = trasa.km > remainingKm ? (trasa.km - remainingKm) * 2 : 0;
+                        const score = diff + penalty;
+                        
+                        if (score < bestScore) {
+                            bestScore = score;
+                            bestTrasa = trasa;
+                            bestIndex = index;
+                        }
+                    });
+                    
+                    if (bestTrasa) {
+                        combination.push(bestTrasa);
+                        usedIndices.add(bestIndex);
+                        remainingKm -= bestTrasa.km;
+                        
+                        if (Math.abs(remainingKm) <= tolerance) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                
+                return combination;
+            }
+            
+            const greedyResult = greedySearch();
+            
+            if (greedyResult.length > 0) {
+                const totalKm = greedyResult.reduce((sum, r) => sum + r.km, 0);
+                const kmDiff = Math.abs(totalKm - targetKm);
+                
+                if (kmDiff <= tolerance) {
+                    const typeName = greedyResult.length === 3 ? 'triple' : 
+                                   greedyResult.length === 4 ? 'quadruple' : 
+                                   greedyResult.length === 5 ? 'quintuple' : 
+                                   `${greedyResult.length}-day`;
+                    
+                    return [{
+                        type: typeName,
+                        routes: greedyResult,
+                        totalKm: totalKm,
+                        difference: kmDiff
+                    }];
+                }
+            }
+
+            // 4. Nejbližší alternativy
+            const alternatives = trasy
+                .filter(trasa => isValidTime(calculateTotalTime(trasa.casTam)))
+                .map(trasa => ({
+                    type: 'alternative',
+                    routes: [trasa],
+                    totalKm: trasa.km,
+                    difference: Math.abs(trasa.km - targetKm)
+                }))
+                .sort((a, b) => a.difference - b.difference)
+                .slice(0, 5);
+            
+            return alternatives;
+        }
+
+        function displayResults(results, date, targetKm, selectedDriver) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<div class="error">❌ Nenalezena žádná trasa</div>';
+                return;
+            }
+
+            const now = new Date();
+            const selectedDate = new Date(date);
+            const currentMonth = selectedDate.getMonth() + 1;
+            const currentYear = selectedDate.getFullYear();
+            const monthFormatted = currentMonth.toString().padStart(2, '0');
+
+            let html = `<div class="success">✅ Nalezeno ${results.length} možností pro ${selectedDriver.jmeno} (${targetKm} km)</div>`;
+            
+            results.forEach((result) => {
+                const routes = result.routes;
+                let copyData = '';
+                let routeHtml = '';
+                
+                // Hlavička s tučným jménem a datem
+                const headerInfo = `Firma: ${selectedDriver.firma}
+**Pracovník: ${selectedDriver.jmeno}**
+Vozidlo: ${selectedDriver.vozidlo}
+SPZ: ${selectedDriver.spz}
+**Měsíc: ${monthFormatted}/${currentYear}**
+
+`;
+                
+                // Trasy
+                let routeData = '';
+                routes.forEach((route, dayIndex) => {
+                    const times = calculateTimes(route.casTam);
+                    const dayDate = formatDateForCopy(addDaysToDate(date, dayIndex));
+                    const copyText = `**${dayDate}**\tChabařovice – ${route.kam}\t\t${times.start}–${times.prijezdTam} / ${times.odjezdZpet}–${times.prijezdZpet}\t${route.km}\t\t${route.popis}, obchodní jednání`;
+                    
+                    if (routeData) routeData += '\n';
+                    routeData += copyText;
+                    
+                    if (routes.length > 1) {
+                        routeHtml += `<h4 style="margin: 16px 0 12px 0; color: #939598; font-size: 1.0rem;">📅 Den ${dayIndex + 1}: ${route.kam}</h4>`;
+                    }
+                    routeHtml += `<div class="copy-text">${copyText}</div>`;
+                });
+                
+                copyData = headerInfo + routeData;
+                
+                // Typ cesty
+                const typeNames = {
+                    'single': 'Jednodenní',
+                    'alternative': 'Alternativa',
+                    'double': 'Dvoudenní',
+                    'triple': 'Třídenní',
+                    'quadruple': 'Čtyřdenní',
+                    'quintuple': 'Pětidenní'
+                };
+                
+                let typeName = typeNames[result.type];
+                if (result.type.includes('-day')) {
+                    const numDays = parseInt(result.type.split('-')[0]);
+                    typeName = `${numDays}denní`;
+                }
+
+                const badgeColor = result.type === 'alternative' ? '#f39c12' : 
+                                   routes.length <= 2 ? '#27ae60' :
+                                   routes.length <= 5 ? '#e74c3c' : '#8e44ad';
+                
+                const escapedCopyData = copyData.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+
+                html += `
+                    <div class="route-card">
+                        <div class="route-header">
+                            <div class="route-title">📅 ${typeName} cesta 
+                                <span class="badge" style="background: ${badgeColor};">±${result.difference}km</span>
+                            </div>
+                            <div class="route-km">${result.totalKm} km</div>
+                        </div>
+                        
+                        <div style="background: rgba(244, 116, 121, 0.08); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <h4 style="margin-bottom: 10px; color: #939598;">📋 Hlavička:</h4>
+                            <div style="font-family: monospace; font-size: 13px; line-height: 1.4;">
+                                Firma: ${selectedDriver.firma}<br>
+                                <strong>Pracovník: ${selectedDriver.jmeno}</strong><br>
+                                Vozidlo: ${selectedDriver.vozidlo}<br>
+                                SPZ: ${selectedDriver.spz}<br>
+                                <strong>Měsíc: ${monthFormatted}/${currentYear}</strong>
+                            </div>
+                        </div>
+                        
+                        ${routeHtml}
+                        
+                        <button class="copy-btn" data-copy-text="${escapedCopyData}">
+                            📋 Kopírovat kompletní vyúčtování (${routes.length > 1 ? `${routes.length} dny` : '1 den'})
+                        </button>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✅ Zkopírováno!';
+                button.style.background = '#27ae60';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 2000);
+            }).catch(() => {
+                alert('Text zkopírován');
+            });
+        }
+
+        function searchRoutes() {
+            const driverSelect = document.getElementById('driver');
+            const date = document.getElementById('date').value;
+            const kilometers = parseInt(document.getElementById('kilometers').value);
+            
+            if (!driverSelect.value || !date || !kilometers) {
+                document.getElementById('results').innerHTML = '<div class="error">❌ Vyplňte všechna pole</div>';
+                return;
+            }
+            
+            const selectedDriver = drivers[parseInt(driverSelect.value)];
+            
+            document.getElementById('results').innerHTML = '<div class="loading">🔍 Hledám trasy...</div>';
+            
+            setTimeout(() => {
+                const results = findSuitableRoutes(kilometers);
+                displayResults(results, date, kilometers, selectedDriver);
+            }, 500);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
+            document.getElementById('currentMonth').textContent = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+            
+            const driverSelect = document.getElementById('driver');
+            drivers.forEach((driver, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${driver.jmeno} (${driver.vozidlo} - ${driver.spz})`;
+                driverSelect.appendChild(option);
+            });
+            
+            driverSelect.addEventListener('change', function() {
+                const driverInfo = document.getElementById('driverInfo');
+                const driverFirma = document.getElementById('driverFirma');
+                const driverVozidlo = document.getElementById('driverVozidlo');
+                const driverSpz = document.getElementById('driverSpz');
+                
+                if (this.value !== '') {
+                    const selectedDriver = drivers[parseInt(this.value)];
+                    driverFirma.textContent = selectedDriver.firma;
+                    driverVozidlo.textContent = selectedDriver.vozidlo;
+                    driverSpz.textContent = selectedDriver.spz;
+                    driverInfo.classList.add('show');
+                } else {
+                    driverInfo.classList.remove('show');
+                }
+            });
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+            
+            document.getElementById('searchBtn').addEventListener('click', searchRoutes);
+            
+            document.getElementById('kilometers').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchRoutes();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('copy-btn')) {
+                    const copyText = e.target.getAttribute('data-copy-text');
+                    if (copyText) {
+                        const decodedText = copyText.replace(/&apos;/g, "'").replace(/&quot;/g, '"');
+                        copyToClipboard(decodedText, e.target);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
